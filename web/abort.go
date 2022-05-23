@@ -4,9 +4,14 @@ import (
 	"net/http"
 )
 
-func Abort(w http.ResponseWriter, weberr *WebError) {
+func Abort(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(weberr.Code)
 
-	w.Write([]byte(`{"error": "` + weberr.Error() + `"}`))
+	if err, ok := err.(*WebError); ok {
+		w.WriteHeader(err.Code)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	w.Write([]byte(`{"error": "` + err.Error() + `"}`))
 }
