@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func Abort(w http.ResponseWriter, err error) {
+func Abort(w http.ResponseWriter, err error) error {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err, ok := err.(*WebError); ok {
@@ -13,5 +13,7 @@ func Abort(w http.ResponseWriter, err error) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	w.Write([]byte(`{"error": "` + err.Error() + `"}`))
+	_, writeErr := w.Write([]byte(`{"error": "` + err.Error() + `"}`))
+
+	return writeErr
 }
