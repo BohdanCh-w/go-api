@@ -4,33 +4,78 @@ import (
 	"context"
 	"net/http"
 
+	gocors "github.com/rs/cors"
+
 	"github.com/bohdanch-w/go-api/entities/set"
 	"github.com/bohdanch-w/go-api/web/api"
 )
 
 type CoorsMid struct {
-	AllowAll       bool
-	AllowedOrigins set.StringSet
-	AllowedMethods set.StringSet
+	AllowAll         bool
+	AllowedOrigins   set.StringSet
+	AllowedMethods   set.StringSet
+	AllowedHeaders   set.StringSet
+	AllowCredentials bool
 }
 
 func (mid *CoorsMid) Wrap(h api.Handler) api.Handler {
+	cors := gocors.New(gocors.Options{
+		AllowedOrigins:   mid.Origins(),
+		AllowedMethods:   mid.Methods(),
+		AllowedHeaders:   mid.Headers(),
+		AllowCredentials: mid.Credentials(),
+	})
+
 	f := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		if mid.AllowAll {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-		} else {
-			if mid.AllowedOrigins.Contains(r.Host) {
-				w.Header().Set("Access-Control-Allow-Origin", r.Host)
+		var (
+			err  error
+			next = func(ww http.ResponseWriter, wr *http.Request) {
+				err = h(ctx, ww, wr)
 			}
+		)
 
-			if mid.AllowedMethods.Contains(r.Method) {
-				w.Header().Set("Access-Control-Allow-Methods", r.Method)
-			}
-		}
+		cors.ServeHTTP(w, r, next)
 
-		return h(ctx, w, r)
+		return err
 	}
 
 	return f
+}
+
+func (mid *CoorsMid) Origins() []string {
+	if mid.AllowAll || mid.AllowedOrigins.IsEmpty() {
+		return []string{"*"}
+	}
+
+	return mid.AllowedOrigins.Elements()
+}
+
+func (mid *CoorsMid) Methods() []string {
+	if mid.AllowAll || mid.AllowedMethods.IsEmpty() {
+		return []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions,
+			http.MethodConnect,
+			http.MethodTrace,
+		}
+	}
+
+	return mid.AllowedMethods.Elements()
+}
+
+func (mid *CoorsMid) Headers() []string {
+	if mid.AllowAll || mid.AllowedHeaders.IsEmpty() {
+		return []string{"*"}
+	}
+
+	return mid.AllowedHeaders.Elements()
+}
+
+func (mid *CoorsMid) Credentials() bool {
+	return mid.AllowAll || mid.AllowCredentials
 }

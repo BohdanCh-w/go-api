@@ -35,3 +35,19 @@ func (s *StringSet) Discard(value string) bool {
 
 	return false
 }
+
+func (s *StringSet) Elements() []string {
+	ret := make([]string, len(s.items))
+
+	copy(ret, s.items)
+
+	return ret
+}
+
+func (s *StringSet) Size() int {
+	return len(s.items)
+}
+
+func (s *StringSet) IsEmpty() bool {
+	return len(s.items) == 0
+}
